@@ -12,19 +12,12 @@ export type Asset = {
   volume: number
 }
 
-export function fetchAssetsList(params?: { filterAssetId?: string }): Promise<Asset[]> {
+export function fetchAssetsList(params?: { pageNum?: string }): Promise<Asset[]> {
   return axiosInstance({
     method: 'get',
     url: '/assets/list',
     params,
-  }).then((response) =>
-    response.data.map((item) => ({
-      id: item.asset_id,
-      currency: item.name,
-      price: item.price_usd,
-      volume: item.volume_1hrs_usd,
-    })),
-  )
+  }).then((response) => response.data as Asset[])
 }
 
 export default axiosInstance
