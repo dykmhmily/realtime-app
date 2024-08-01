@@ -27,12 +27,12 @@ const transformData = (
 
 const checkCache = async (req: Request, res: Response, next: NextFunction) => {
   const { pageNum = '1' } = req.query
-  const filterAssetId = PageList[pageNum as keyof typeof PageList]
-  const cachedData = await cache.get(filterAssetId)
-  req.filterAssetId = filterAssetId
+  const filterAssetId: string = PageList[pageNum as keyof typeof PageList]
+  const cachedData = cache.get(filterAssetId)
+  // req.filterAssetId = filterAssetId
 
   if (cachedData) {
-    res.send(JSON.parse(cachedData))
+    res.send(JSON.parse(cachedData as string))
   } else {
     next() // Continue to the route handler if data is not in the cache
   }
@@ -40,12 +40,14 @@ const checkCache = async (req: Request, res: Response, next: NextFunction) => {
 
 router.get('/list', checkCache, async (req: Request, res: Response) => {
   try {
-    const { filterAssetId } = req
+    const { pageNum = '1' } = req.query
+    const filterAssetId: string = PageList[pageNum as keyof typeof PageList]
+    // const { filterAssetId } = req
     const data = await fetchAssets({
-      filterAssetId: filterAssetId as string,
+      filterAssetId: filterAssetId,
     })
     const transformedData = transformData(data)
-    cache.set(filterAssetId, transformedData)
+    cache.set(filterAssetId, JSON.stringify(transformedData))
     res.status(200).json(transformedData)
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch assets' })
