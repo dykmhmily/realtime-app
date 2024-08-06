@@ -1,55 +1,33 @@
 import { useEffect, useRef, useState } from 'react'
 import Card from './components/card'
-import { fetchAssetsList, Asset } from './utils/http'
-
-const useAnimationFrame = (callback) => {
-  const frameRef = useRef(0)
-  const retryCountRef = useRef(0)
-  const maxRetries = 5
-  const retryDelay = 2000 // ms
-
-  const animate = async () => {
-    try {
-      await callback()
-      retryCountRef.current = 0 // reset
-      frameRef.current = requestAnimationFrame(animate)
-    } catch (error) {
-      console.error(error)
-      retryCountRef.current++
-      if (retryCountRef.current <= maxRetries) {
-        const delay = retryDelay * Math.pow(2, retryCountRef.current)
-        console.log(`Retrying in ${delay}ms...`)
-        setTimeout(() => {
-          frameRef.current = requestAnimationFrame(animate)
-        }, delay)
-        return
-      } else {
-        console.error('Max retries reached. Stopping retries.')
-        return
-      }
-    }
-  }
-
-  useEffect(() => {
-    frameRef.current = requestAnimationFrame(animate)
-    return () => cancelAnimationFrame(frameRef.current)
-  }, [])
-}
+import { Asset } from './utils/http'
+const WEBSOCKET_BASE_URL = import.meta.env.VITE_API_WEBSOCKET_BASE_URL || ''
 
 function App() {
   const [list, setList] = useState<Array<Asset>>([])
   const [error, setError] = useState<string | null>(null)
 
-  useAnimationFrame(async () => {
-    try {
-      const res: Array<Asset> = await fetchAssetsList()
-      setList(res)
-      setError(null)
-    } catch (err) {
-      setError('Failed. Please try again later....')
-      throw err
-    }
-  })
+  useEffect(() => {
+    const socket: WebSocket = new WebSocket(`${WEBSOCKET_BASE_URL}/assets/list?pageNum=2`)
+
+    socket.addEventListener('message', (event) => {
+      console.log('message', event.data)
+      const res: {
+        code: number
+        data: Array<Asset>
+      } = JSON.parse(event.data as string)
+      if (res.code === 200) {
+        setList(res.data)
+      }
+    })
+
+    // TODO: If server ended causes connection failed, should close the websocket server.
+    // socket.addEventListener('error', () => {
+    //   setError('Failed. Please try again later....')
+    // })
+
+    return () => socket.close()
+  }, [])
 
   return (
     <div className="max-w-[1024px] h-dvh p-10">
